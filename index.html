@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Intake–Cascade PTO</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one working bench. The CAD model and its controls on top, the shift explained underneath. */
+:root {
+  --bg: #edf0f1;
+  --panel: #fafbfb;
+  --ink: #13202a;
+  --muted: #56656f;
+  --line: #c9d2d7;
+  --stage: #d9dfe2;
+  --stage-2: #c4ccd0;
+  --cascade: #b46b00;
+  --intake: #00806f;
+  --neutral: #6b7a84;
+  --on-accent: #ffffff;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1418; --panel: #151e24; --ink: #e3eaee; --muted: #8e9da7; --line: #27343c;
+    --stage: #1a2329; --stage-2: #0d1317; --cascade: #f0a43a; --intake: #2ec2ae; --neutral: #8a99a3; --on-accent: #0a1013;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1418; --panel: #151e24; --ink: #e3eaee; --muted: #8e9da7; --line: #27343c;
+  --stage: #1a2329; --stage-2: #0d1317; --cascade: #f0a43a; --intake: #2ec2ae; --neutral: #8a99a3; --on-accent: #0a1013;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 22px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: grid; gap: 4px; margin-bottom: 16px; }
+.eyebrow { font: 600 12px/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(30px, 5vw, 46px)/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.lede { margin: 6px 0 0; max-width: 70ch; color: var(--muted); }
+.lede b { color: var(--ink); font-weight: 600; }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 304px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .stage { aspect-ratio: 1 / 1.15; } .lbl.small { display: none; } .lbl { font-size: 10.5px; } }
+
+.stage { position: relative; background: var(--stage); border-radius: 10px; overflow: hidden; aspect-ratio: 16 / 10.5; min-height: 320px; max-width: 100%; border: 1px solid var(--line); }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl { font: 500 11.5px/1.25 var(--body); color: var(--ink); background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.lbl.small { font-size: 10.5px; color: var(--muted); }
+.stage.hide-labels .labels { display: none; }
+.hud { position: absolute; left: 12px; top: 12px; display: grid; gap: 4px; pointer-events: none; }
+.chip { justify-self: start; font: 700 15px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px 5px; border-radius: 4px;
+  color: var(--on-accent); background: var(--neutral); transition: background-color .2s; }
+.chip[data-mode="lift"] { background: var(--cascade); }
+.chip[data-mode="intake"] { background: var(--intake); }
+.hud-sub { font: 500 12px/1.3 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.views { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+.views button, .play { font: 600 12px/1 var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+.views button[aria-pressed="true"] { border-color: var(--ink); }
+.play { position: absolute; right: 12px; top: 12px; min-width: 70px; }
+.msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); font: 500 14px/1.4 var(--body); pointer-events: none; }
+.msg[hidden] { display: none; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 18px; }
+.panel h2 { font: 700 13px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: 700 17px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 12px 8px 10px; border: 0; cursor: pointer;
+  background: transparent; color: var(--ink); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[data-mode="lift"][aria-pressed="true"] { background: var(--cascade); color: var(--on-accent); }
+.seg button[data-mode="intake"][aria-pressed="true"] { background: var(--intake); color: var(--on-accent); }
+.seg button small { display: block; font: 500 11px/1.2 var(--body); letter-spacing: 0; text-transform: none; margin-top: 5px; opacity: .85; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row label { font-weight: 500; }
+.toggles { display: grid; gap: 8px; }
+.toggles label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+input[type="range"] { width: 100%; accent-color: var(--ink); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.read { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 14px; }
+.read dt { color: var(--muted); }
+.read dd { margin: 0; text-align: right; font: 500 13px/1.5 var(--mono); font-variant-numeric: tabular-nums; }
+.read dd .tag { font: 600 10.5px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 2px 5px; border-radius: 3px; margin-left: 6px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
+.read dd .tag.on-lift { border-color: var(--cascade); color: var(--cascade); }
+.read dd .tag.on-intake { border-color: var(--intake); color: var(--intake); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.below { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px 28px; margin-top: 28px; }
+@media (max-width: 900px) { .below { grid-template-columns: minmax(0, 1fr); } }
+.below > div { min-width: 0; }
+.below h2 { font: 700 22px/1.1 var(--display); letter-spacing: .02em; margin: 0 0 10px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); transition: border-color .2s; }
+.steps li::before { content: counter(s); grid-row: span 2; font: 700 22px/1 var(--display); color: var(--muted); padding-top: 2px; }
+.steps li b { font-weight: 600; }
+.steps li span { color: var(--muted); grid-column: 2; }
+.steps li.now { border-color: var(--ink); }
+.steps li.now::before { color: var(--ink); }
+.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+.train { display: grid; gap: 12px; }
+.path { border-left: 3px solid var(--neutral); padding: 2px 0 2px 12px; }
+.path.lift { border-color: var(--cascade); }
+.path.intake { border-color: var(--intake); }
+.path h3 { font: 700 16px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 4px; }
+.path p { margin: 0; font: 500 12.5px/1.7 var(--mono); overflow-wrap: anywhere; }
+.notes { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 70ch; }
+.notes li::marker { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .chip, .steps li { transition: none; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Intake–Cascade PTO</h1>
+  </header>
+
+  <section class="bench">
+    <div class="stage" id="stage">
+      <div class="hud">
+        <div class="chip" id="chip" data-mode="intake">Intake</div>
+        <div class="hud-sub" id="hudsub">top roller 300 rpm</div>
+      </div>
+      <button class="play" id="play" type="button" aria-pressed="true">Pause</button>
+      <div class="views" role="group" aria-label="Camera view">
+        <button type="button" data-view="iso" aria-pressed="true">3D</button>
+        <button type="button" data-view="side" aria-pressed="false">Along the shaft</button>
+        <button type="button" data-view="face" aria-pressed="false">Gear plane</button>
+      </div>
+      <div class="msg" id="msg">Loading the CAD parts…</div>
+    </div>
+
+    <aside class="panel" aria-label="Controls">
+      <div>
+        <h2>Output</h2>
+        <div class="seg" role="group" aria-label="PTO output">
+          <button type="button" id="m-lift" data-mode="lift" aria-pressed="false">Cascade<small>cylinder extended</small></button>
+          <button type="button" id="m-intake" data-mode="intake" aria-pressed="true">Intake<small>cylinder retracted</small></button>
+        </div>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="auto" checked> Shift back and forth on its own</label>
+        <label><input type="checkbox" id="lbls" checked> Part labels</label>
+        <label><input type="checkbox" id="path"> Tint the parts carrying power</label>
+        <label><input type="checkbox" id="ctx" checked> Towers and bracing</label>
+      </div>
+      <div>
+        <div class="row"><label for="speed">Slow motion</label><span class="mono" id="speedv">0.10× real</span></div>
+        <input type="range" id="speed" min="0.02" max="0.5" step="0.01" value="0.10">
+      </div>
+      <div>
+        <h2>Live (real speeds)</h2>
+        <dl class="read">
+          <dt>Motor</dt><dd><span id="r-motor">100</span> rpm</dd>
+          <dt>Cascade winch</dt><dd><span id="r-winch">0</span> rpm<span class="tag" id="t-winch">held</span></dd>
+          <dt>Intake shaft</dt><dd><span id="r-ishaft">100</span> rpm</dd>
+          <dt>Top roller</dt><dd><span id="r-roller">300</span> rpm<span class="tag on-intake" id="t-roller">driven</span></dd>
+          <dt>Gear travel</dt><dd><span id="r-travel">0.000</span> / 0.984 in</dd>
+          <dt>Cylinder</dt><dd id="r-cyl">retracted</dd>
+        </dl>
+      </div>
+    </aside>
+  </section>
+
+</div>
+
+<script type="application/json" id="pto-meta">{"axes":{"M":[4.25,9.6875],"I":[4.25,11.1875],"W":[4.25,8.6875],"W8":[4.25,8.675],"L":[4.25,7.6875],"IDL":[6.2589,8.7953],"R":[6.6494,7.8634],"R2":[7.04,6.942]},"gears":{"slider":{"N":36,"axis":"M","phase":0.08726577524299989,"quality":0.8216787403899145,"rmax":0.7916986897979643,"x":[-0.0009675150009839928,0.49903247009785634]},"ls36":{"N":36,"axis":"I","phase":-1.3074698508335069e-09,"quality":0.9455500119896119,"rmax":0.7915002788501981,"x":[0.024499999999999994,0.27449999254941937]},"w12":{"N":12,"axis":"W8","phase":0.06776774961730794,"quality":0.859541611817928,"rmax":0.2885106675675378,"x":[-1.0185769707765888,-0.5284229130354223]},"idl36":{"N":36,"axis":"IDL","phase":0.08726462112732879,"quality":0.8239658742467024,"rmax":0.792369949993847,"x":[3.297032335987404,3.79703251480134]},"sp13":{"N":8,"axis":"I","phase":0.008780644605518056,"quality":0.9729173855226997,"rmax":0.3912421395970581,"x":[2.9361800493001944,3.157819965600968]},"sp14":{"N":8,"axis":"IDL","phase":0.006623121547427288,"quality":0.9731206228748028,"rmax":0.40329537617351086,"x":[2.936458127319812,3.1575418875813477]},"r12":{"N":12,"axis":"R","phase":1.859523711494619e-08,"quality":0.8650102494714155,"rmax":0.29204384974377784,"x":[3.362000081956386,3.612000178813934]},"wa12":{"N":12,"axis":"W","phase":0.06969201077976854,"quality":0.8638251982954196,"rmax":0.2890064213167708,"x":[-3.1785769707899423,-2.6884954817037903]},"wb12":{"N":12,"axis":"W","phase":0.06969201077976854,"quality":0.8638251982954196,"rmax":0.2890064213167708,"x":[2.688423029210057,3.178504518296209]},"la36":{"N":36,"axis":"L","phase":-0.0001347045482106426,"quality":0.8262037999806422,"rmax":0.7926352774283465,"x":[-3.1886802922401065,-2.6886801134261704]},"rl36":{"N":36,"axis":"R","phase":0.05221794386870868,"quality":0.946219499869293,"rmax":0.7923632003148487,"x":[-3.2994397936267483,-3.0494397042188255]},"r2_12":{"N":12,"axis":"R2","phase":0.14130746968834243,"quality":0.8617663146232036,"rmax":0.28902372407806576,"x":[-3.372164970543502,-2.8820835857654736]},"lb36":{"N":36,"axis":"L","phase":-7.431638136820634e-07,"quality":0.821534151489293,"rmax":0.7916982306317728,"x":[2.6885323061850808,3.188532484999017]}},"chunks":[{"unit":"I","cat":"pto","mat":"acetal","nv":14718,"ni":65085,"p":0,"n":88308,"i":132464,"b0":[-0.038,3.458517,10.396017],"b1":[0.337,5.041483,11.978983]},{"unit":"I","cat":"pto","mat":"nutsteel","nv":2290,"ni":7395,"p":262636,"n":276376,"i":283248,"b0":[-0.298,4.033465,10.970964],"b1":[-0.038,4.466535,11.404035]},{"unit":"I","cat":"pto","mat":"steel_satin","nv":4200,"ni":17316,"p":298040,"n":323240,"i":335840,"b0":[-3.86,3.858763,10.796344],"b1":[3.86,4.641156,11.578737]},{"unit":"IDL","cat":"pto","mat":"acetal","nv":26875,"ni":145212,"p":370472,"n":531724,"i":612352,"b0":[3.297032,5.468434,8.005802],"b1":[3.797033,7.048166,9.585535]},{"unit":"IDL","cat":"pto","mat":"bronze","nv":288,"ni":840,"p":902776,"n":904504,"i":905368,"b0":[3.047,6.133103,8.670503],"b1":[3.547,6.383497,8.920897]},{"unit":"IDL","cat":"pto","mat":"gearcore","nv":2693,"ni":13905,"p":907048,"n":923208,"i":931288,"b0":[3.297032,5.900032,8.437401],"b1":[3.797033,6.616568,9.153936]},{"unit":"IDL","cat":"pto","mat":"steel_satin","nv":3480,"ni":13152,"p":959100,"n":979980,"i":990420,"b0":[2.797,5.867063,8.392044],"b1":[3.297,6.649456,9.174437]},{"unit":"La","cat":"out","mat":"acetal","nv":26869,"ni":145200,"p":1016724,"n":1177940,"i":1258548,"b0":[-3.18868,3.45835,6.896819],"b1":[-2.68868,5.04165,8.480118]},{"unit":"La","cat":"out","mat":"bronze","nv":288,"ni":840,"p":1548948,"n":1550676,"i":1551540,"b0":[-3.188713,4.118076,7.556579],"b1":[-2.688713,4.381918,7.820421]},{"unit":"La","cat":"out","mat":"gearcore","nv":2693,"ni":13905,"p":1553220,"n":1569380,"i":1577460,"b0":[-3.18868,3.871808,7.310276],"b1":[-2.68868,4.628186,8.066654]},{"unit":"Lb","cat":"out","mat":"acetal","nv":26869,"ni":145200,"p":1605272,"n":1766488,"i":1847096,"b0":[2.688532,3.45835,6.895819],"b1":[3.188532,5.04165,8.479118]},{"unit":"Lb","cat":"out","mat":"bronze","nv":288,"ni":840,"p":2137496,"n":2139224,"i":2140088,"b0":[2.6885,4.118076,7.555579],"b1":[3.1885,4.381918,7.819421]},{"unit":"Lb","cat":"out","mat":"gearcore","nv":2693,"ni":13905,"p":2141768,"n":2157928,"i":2166008,"b0":[2.688532,3.871808,7.309276],"b1":[3.188532,4.628186,8.065654]},{"unit":"M","cat":"pto","mat":"vexsteel","nv":386,"ni":1317,"p":2193820,"n":2196136,"i":2197296,"b0":[-4.36,4.125,9.5625],"b1":[1.589,4.375,9.8125]},{"unit":"R","cat":"out","mat":"acetal","nv":16355,"ni":68091,"p":2199932,"n":2298064,"i":2347132,"b0":[-3.36194,5.858642,7.072112],"b1":[3.6745,7.439264,8.652927]},{"unit":"R","cat":"out","mat":"blackgloss","nv":4503,"ni":27018,"p":2483316,"n":2510336,"i":2523848,"b0":[-2.612,6.45215,7.666149],"b1":[4.112,6.84585,8.05985]},{"unit":"R","cat":"out","mat":"blacknylon","nv":8734,"ni":26826,"p":2577884,"n":2630288,"i":2656492,"b0":[-4.11194,6.4615,7.675146],"b1":[4.0525,6.836507,8.0505]},{"unit":"R","cat":"out","mat":"nutsteel","nv":4580,"ni":14790,"p":2710144,"n":2737624,"i":2751364,"b0":[-1.974439,6.432548,7.646179],"b1":[1.962061,6.865523,8.0795]},{"unit":"R","cat":"out","mat":"steel_satin","nv":4176,"ni":17280,"p":2780944,"n":2806000,"i":2818528,"b0":[2.7371,6.257763,7.471844],"b1":[3.2371,7.040156,8.254237]},{"unit":"R","cat":"out","mat":"vexsteel","nv":120,"ni":384,"p":2853088,"n":2853808,"i":2854168,"b0":[-4.226999,6.571957,7.785956],"b1":[5.473,6.726043,7.940044]},{"unit":"R2","cat":"out","mat":"steel_satin","nv":1477,"ni":4209,"p":2854936,"n":2863800,"i":2868232,"b0":[-3.377088,6.752517,6.808167],"b1":[-2.877088,7.327094,7.229816]},{"unit":"W","cat":"out","mat":"blackgloss","nv":32162,"ni":189534,"p":2876652,"n":3069624,"i":3166112,"b0":[-3.434001,3.850017,8.288477],"b1":[3.4341,4.652775,9.087862]},{"unit":"W","cat":"out","mat":"blackox","nv":1186,"ni":4212,"p":3545180,"n":3552296,"i":3555856,"b0":[0.821657,4.052608,8.488741],"b1":[1.580713,4.447791,8.884892]},{"unit":"W","cat":"out","mat":"grey","nv":5284,"ni":15636,"p":3564280,"n":3595984,"i":3611836,"b0":[-2.670106,3.856366,8.293866],"b1":[2.669894,4.643634,9.081134]},{"unit":"W","cat":"out","mat":"sensor","nv":2077,"ni":5997,"p":3643108,"n":3655572,"i":3661804,"b0":[0.871658,3.987033,8.422265],"b1":[1.530713,4.515748,8.952375]},{"unit":"W","cat":"out","mat":"steel_satin","nv":5290,"ni":15222,"p":3673800,"n":3705540,"i":3721412,"b0":[-8.305257,3.961585,8.399525],"b1":[3.1835,4.538475,8.976414]},{"unit":"W","cat":"out","mat":"vexsteel","nv":378,"ni":1293,"p":3751856,"n":3754124,"i":3755260,"b0":[-3.710757,4.125,8.5625],"b1":[3.689243,4.375,8.8125]},{"unit":"W8","cat":"pto","mat":"steel_satin","nv":2578,"ni":7413,"p":3757848,"n":3773316,"i":3781052,"b0":[-1.0235,3.961585,8.386525],"b1":[-0.5235,4.538475,8.963414]},{"unit":"fork","cat":"pto","mat":"alu","nv":2806,"ni":9084,"p":3795880,"n":3812716,"i":3821136,"b0":[-1.001,3.0,9.3915],"b1":[1.144,4.5,12.0175]},{"unit":"fork","cat":"pto","mat":"bearing","nv":6826,"ni":37998,"p":3839304,"n":3880260,"i":3900740,"b0":[-0.528008,3.55042,9.416459],"b1":[1.082,4.949581,9.958541]},{"unit":"fork","cat":"pto","mat":"nutsteel","nv":7814,"ni":32763,"p":3976736,"n":4023620,"i":4047064,"b0":[-1.013535,3.0655,9.527718],"b1":[1.119916,4.466536,12.5585]},{"unit":"fork","cat":"pto","mat":"screw","nv":8364,"ni":33624,"p":4112592,"n":4162776,"i":4187868,"b0":[-0.953,3.094,9.3045],"b1":[1.186,4.406,12.645501]},{"unit":"fork","cat":"pto","mat":"vexsteel","nv":388,"ni":1200,"p":4255116,"n":4257444,"i":4258608,"b0":[-0.679976,4.17126,12.35376],"b1":[2.873173,4.32874,12.51124]},{"unit":"fork","cat":"pto","mat":"whitenylon","nv":1856,"ni":5760,"p":4261008,"n":4272144,"i":4277712,"b0":[-0.922,3.125,9.5625],"b1":[0.624,4.375,12.2675]},{"unit":"slider","cat":"pto","mat":"acetal","nv":26875,"ni":145215,"p":4289232,"n":4450484,"i":4531112,"b0":[-0.000968,3.460134,8.897602],"b1":[0.499032,5.039866,10.477334]},{"unit":"slider","cat":"pto","mat":"blackgloss","nv":6004,"ni":36024,"p":4821544,"n":4857568,"i":4875580,"b0":[-0.126,4.05315,9.490649],"b1":[0.624,4.44685,9.88435]},{"unit":"slider","cat":"pto","mat":"gearcore","nv":2693,"ni":13905,"p":4947628,"n":4963788,"i":4971868,"b0":[-0.000968,3.891732,9.329201],"b1":[0.499033,4.608268,10.045736]},{"unit":"static","cat":"out","mat":"bearing","nv":5060,"ni":26046,"p":4999680,"n":5030040,"i":5045220,"b0":[-4.381624,6.26109,7.229176],"b1":[4.381746,7.037043,8.496456]},{"unit":"static","cat":"out","mat":"blacknylon","nv":1250,"ni":3846,"p":5097312,"n":5104812,"i":5108564,"b0":[-3.376606,4.0625,7.5],"b1":[3.380394,4.4375,7.8755]},{"unit":"static","cat":"out","mat":"nutsteel","nv":5524,"ni":25368,"p":5116256,"n":5149400,"i":5165972,"b0":[-3.55,4.0655,7.527718],"b1":[3.55,4.4345,7.847782]},{"unit":"static","cat":"out","mat":"screw","nv":2788,"ni":11208,"p":5216708,"n":5233436,"i":5241800,"b0":[-3.949,4.094,7.5315],"b1":[3.949,4.406,7.844]},{"unit":"static","cat":"out","mat":"sensor","nv":12142,"ni":38664,"p":5264216,"n":5337068,"i":5373496,"b0":[0.792524,2.169916,7.400908],"b1":[1.607484,4.797018,9.231529]},{"unit":"static","cat":"out","mat":"vexsteel","nv":2272,"ni":6912,"p":5450824,"n":5464456,"i":5471272,"b0":[-3.252,4.073,7.5105],"b1":[3.252,4.427,7.865]},{"unit":"static","cat":"out","mat":"whitenylon","nv":928,"ni":2880,"p":5485096,"n":5490664,"i":5493448,"b0":[-3.8,4.125,7.5625],"b1":[3.8,4.375,7.813]},{"unit":"static","cat":"pto","mat":"alu","nv":898,"ni":3312,"p":5499208,"n":5504596,"i":5507292,"b0":[1.6715,4.105663,10.0625],"b1":[3.6715,4.394338,10.3125]},{"unit":"static","cat":"pto","mat":"bearing","nv":8385,"ni":44589,"p":5513916,"n":5564228,"i":5589384,"b0":[-3.818685,3.55042,9.416459],"b1":[3.818685,4.949581,11.856506]},{"unit":"static","cat":"pto","mat":"blackgloss","nv":14611,"ni":87666,"p":5678564,"n":5766232,"i":5810068,"b0":[-1.2735,4.053149,8.490649],"b1":[1.859,4.44685,8.88435]},{"unit":"static","cat":"pto","mat":"blacknylon","nv":8047,"ni":24549,"p":5985400,"n":6033684,"i":6057828,"b0":[-3.548,4.0625,8.6082],"b1":[3.925,6.4458,11.375]},{"unit":"static","cat":"pto","mat":"motor","nv":54387,"ni":289848,"p":6106928,"n":6433252,"i":6596416,"b0":[-6.71074,3.600393,9.054546],"b1":[-3.891842,4.899607,11.310454]},{"unit":"static","cat":"pto","mat":"motorcap","nv":1074,"ni":4224,"p":7176112,"n":7182556,"i":7185780,"b0":[-4.462709,4.108017,10.058484],"b1":[-3.864283,4.391983,10.806515]},{"unit":"static","cat":"pto","mat":"nutsteel","nv":12403,"ni":56934,"p":7194228,"n":7268648,"i":7305860,"b0":[-4.034916,3.1605,8.104418],"b1":[4.362,6.418082,12.592282]},{"unit":"static","cat":"pto","mat":"polycarb","nv":2628,"ni":7776,"p":7419728,"n":7435496,"i":7443380,"b0":[1.609,3.0405,7.8804],"b1":[1.6715,5.0,11.607]},{"unit":"static","cat":"pto","mat":"screw","nv":16712,"ni":67152,"p":7458932,"n":7559204,"i":7609340,"b0":[-4.22,3.189075,8.108323],"b1":[4.513,6.4143,12.5885]},{"unit":"static","cat":"pto","mat":"vexsteel","nv":1826,"ni":5400,"p":7743644,"n":7754600,"i":7760080,"b0":[0.117268,4.013779,12.19628],"b1":[3.759,4.486221,12.668721]},{"unit":"static","cat":"pto","mat":"whitenylon","nv":1856,"ni":5760,"p":7770880,"n":7782016,"i":7787584,"b0":[1.474,3.625,8.6707],"b1":[4.172,6.3833,12.5575]},{"unit":"static","cat":"struct","mat":"alu","nv":15741,"ni":50583,"p":7799104,"n":7893552,"i":7940776,"b0":[-4.42494,3.750091,6.245498],"b1":[4.425061,7.589514,14.191442]},{"unit":"static","cat":"struct","mat":"bearing","nv":6826,"ni":37998,"p":8041944,"n":8082900,"i":8103380,"b0":[-3.826009,3.978959,7.988328],"b1":[3.826069,4.523858,9.387489]},{"unit":"static","cat":"struct","mat":"blacknylon","nv":1232,"ni":3744,"p":8179376,"n":8186768,"i":8190464,"b0":[-4.361939,4.312557,12.750409],"b1":[4.362061,4.687443,13.125409]},{"unit":"static","cat":"struct","mat":"nutsteel","nv":12429,"ni":57078,"p":8197952,"n":8272528,"i":8309816,"b0":[-4.116939,4.0655,7.217879],"b1":[4.1171,7.004168,13.122409]},{"unit":"static","cat":"struct","mat":"screw","nv":12546,"ni":50436,"p":8423972,"n":8499248,"i":8536888,"b0":[-4.511939,4.094,7.246379],"b1":[4.5121,7.000386,13.093909]},{"unit":"chainlink","cat":"pto","mat":"grey","nv":1788,"ni":5352,"p":8637760,"n":8648488,"i":8653852,"b0":[2.824559,-0.086535,-0.086624],"b1":[3.269441,0.336535,0.086624]}],"chain":{"n":33,"pitch":0.25,"x":[2.824558982372284,3.2694411070346834],"ccw":true,"r13":[4.25,11.1875],"r14":[6.2589,8.7953]},"named":{"motor":[[-6.7107,3.6004,9.0545],[-3.8643,4.8996,11.3105]],"cyl":[[0.1173,4.0138,12.1963],[3.759,4.4862,12.6687]],"slider":[[-0.126,3.4601,8.8976],[0.624,5.0399,10.4773]],"fork":[[-1.0135,3.0,9.3045],[2.8732,4.9496,12.6455]],"plate":[[1.609,3.0405,7.8804],[1.6715,5.0,11.607]],"w12":[[-1.0235,3.9616,8.3865],[-0.5235,4.5385,8.9634]],"ls36":[[-0.038,3.4585,10.396],[0.337,5.0415,11.979]],"idl":[[2.797,5.4684,8.0058],[3.797,7.0482,9.5855]],"r12":[[3.2995,6.3575,7.5715],[3.6745,6.9405,8.1545]],"towerL":[[3.3121,3.7501,6.6879],[3.8621,4.7501,14.1914]],"towerR":[[-3.8619,3.7501,6.6879],[-3.312,4.7501,14.1914]],"sensor":[[0.7925,2.1699,7.4009],[1.6075,4.797,9.2315]],"rodend":[[-1.0135,4.0335,12.2985],[-0.5805,4.4665,12.5585]]},"triangles":795393,"bytes":8664556}</script>
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const META = JSON.parse(document.getElementById('pto-meta').textContent);
+const PI = Math.PI, TAU = 2 * PI;
+const $ = (id) => document.getElementById(id);
+const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const msg = $('msg');
+const AX = META.axes, GE = META.gears;
+
+// ---------- renderer ----------
+const stage = $('stage');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  msg.textContent = 'This animation needs WebGL, which this browser has turned off.';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.prepend(renderer.domElement);
+const labelR = new CSS2DRenderer();
+labelR.domElement.className = 'labels';
+stage.insertBefore(labelR.domElement, renderer.domElement.nextSibling);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.03).texture;
+// cut-away box: the towers and bracing are long parts; show only the stretch around the PTO
+const BOX0 = [-7.0, 2.8, 7.2], BOX1 = [5.6, 7.6, 13.4];
+renderer.clippingPlanes = [
+  new THREE.Plane(new THREE.Vector3(1, 0, 0), -BOX0[0]), new THREE.Plane(new THREE.Vector3(-1, 0, 0), BOX1[0]),
+  new THREE.Plane(new THREE.Vector3(0, 1, 0), -BOX0[1]), new THREE.Plane(new THREE.Vector3(0, -1, 0), BOX1[1]),
+  new THREE.Plane(new THREE.Vector3(0, 0, 1), -BOX0[2]), new THREE.Plane(new THREE.Vector3(0, 0, -1), BOX1[2]),
+];
+const camera = new THREE.PerspectiveCamera(30, 1.6, 0.2, 300);
+camera.up.set(0, 0, 1);
+const CENTER = new THREE.Vector3(-0.8, 5.0, 10.1);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(CENTER);
+controls.enableDamping = true;
+controls.minDistance = 3;
+controls.maxDistance = 45;
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x7d8890, 0.55);
+hemi.position.set(0, 0, 1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 2.1);
+sun.position.set(5.5, 15, 24);
+sun.target.position.copy(CENTER);
+scene.add(sun, sun.target);
+sun.castShadow = true;
+sun.shadow.mapSize.setScalar(window.innerWidth < 700 ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 7, bottom: -7, near: 2, far: 40 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.012;
+const rim = new THREE.DirectionalLight(0xdfe9ff, 0.7);
+rim.position.set(-10, -12, 9);
+scene.add(rim);
+
+// ---------- materials (from the CAD appearances) ----------
+const std = (c, m, r) => new THREE.MeshStandardMaterial({ color: c, metalness: m, roughness: r });
+const BASE = {
+  alu: std(0xdfe2e5, 1.0, 0.34),          // Aluminum - Satin: channels, angles, standoffs
+  screw: std(0xc9cacc, 1.0, 0.2),         // Stainless Steel - Polished: 8-32 screws
+  steel_satin: std(0xa9abad, 1.0, 0.32),  // Steel - Satin: HS shafts, 12T pinions, square inserts, 8T sprockets
+  vexsteel: std(0xbfc5cd, 1.0, 0.26),     // VEX Steel: LS shafts, washers, cylinder
+  nutsteel: std(0xb7bdc6, 1.0, 0.36),     // Steel - VEX: nylock nuts, LS collars
+  blackox: std(0x3d3f42, 1.0, 0.44),
+  bronze: std(0xd8b27b, 1.0, 0.3),
+  bearing: std(0x1b1b1c, 0.0, 0.7),       // bearing flats
+  blackgloss: std(0x17171a, 0.0, 0.3),    // HS spacers, HS collars
+  blacknylon: std(0x1d1d1f, 0.0, 0.6),    // 0.375 in nylon spacers
+  whitenylon: std(0xeeebe1, 0.0, 0.5),    // 0.25 in nylon spacers
+  acetal: std(0x1f2022, 0.0, 0.4),        // gears and the 30T sprockets
+  grey: std(0x585c5f, 0.1, 0.42),         // chain links, low-profile collars
+  gearcore: std(0x5a5e61, 0.35, 0.45),
+  rubber: std(0x2b2b2b, 0.0, 0.85),
+  sensor: std(0x27292c, 0.0, 0.55),
+  motor: std(0x2b2e31, 0.0, 0.5),
+  motorcap: std(0xe9e5cf, 0.0, 0.5),
+  polycarb: new THREE.MeshPhysicalMaterial({ color: 0xe9f2f6, metalness: 0, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }),
+};
+const unitMats = {};
+function matFor(unit, key) {
+  const k = unit + '|' + key;
+  if (!unitMats[k]) { unitMats[k] = BASE[key].clone(); unitMats[k].userData.unit = unit; }
+  return unitMats[k];
+}
+
+// ---------- units: rigid sets of parts that move together ----------
+const UNIT_AXIS = { M: 'M', slider: 'M', I: 'I', W: 'W', W8: 'W8', La: 'L', Lb: 'L', IDL: 'IDL', R: 'R', R2: 'R2' };
+const units = {};
+function unit(name) {
+  if (units[name]) return units[name];
+  const outer = new THREE.Group(); scene.add(outer);
+  let pivot = outer; const ak = UNIT_AXIS[name];
+  if (ak) { pivot = new THREE.Group(); pivot.position.set(0, AX[ak][0], AX[ak][1]); outer.add(pivot); }
+  return (units[name] = { outer, pivot, ax: ak ? AX[ak] : null, meshes: [] });
+}
+const ctxMeshes = [];
+let linkGeom = null, chainMesh = null, plateEdges = null;
+
+async function loadMesh() {
+  // the packed CAD mesh ships as base64 text (gzip inside)
+  const res = await fetch('pto-v4-mesh.txt');
+  if (!res.ok) throw new Error('mesh file ' + res.status);
+  const b64 = (await res.text()).replace(/\s+/g, '');
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  let buf = bytes.buffer;
+  const head = new Uint8Array(buf, 0, 2);
+  if (head[0] === 0x1f && head[1] === 0x8b) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot unpack the CAD mesh (no DecompressionStream).');
+    const ds = new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')));
+    buf = await ds.arrayBuffer();
+  }
+  return buf;
+}
+
+function decode(buf, c, shift) {
+  const q = new Uint16Array(buf, c.p, c.nv * 3);
+  const pos = new Float32Array(c.nv * 3);
+  for (let i = 0; i < c.nv; i++) for (let k = 0; k < 3; k++) {
+    pos[i * 3 + k] = c.b0[k] + (q[i * 3 + k] / 65535) * (c.b1[k] - c.b0[k]) - (shift ? shift[k] : 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(buf, c.n, c.nv * 3), 3, true));
+  g.setIndex(new THREE.BufferAttribute(new Uint16Array(buf, c.i, c.ni), 1));
+  g.computeBoundingSphere();
+  return g;
+}
+
+function build(buf) {
+  for (const c of META.chunks) {
+    if (c.unit === 'chainlink') {
+      linkGeom = decode(buf, c, null);
+      continue;
+    }
+    const u = unit(c.unit);
+    const shift = u.ax ? [0, u.ax[0], u.ax[1]] : null;
+    const g = decode(buf, c, shift);
+    const m = new THREE.Mesh(g, matFor(c.unit, c.mat));
+    m.castShadow = c.mat !== 'polycarb';
+    m.receiveShadow = true;
+    u.pivot.add(m); u.meshes.push(m);
+    if (c.cat === 'struct') ctxMeshes.push(m);
+    if (c.mat === 'polycarb') {
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), new THREE.LineBasicMaterial({ color: 0x6f8fa3, transparent: true, opacity: 0.8 }));
+      u.pivot.add(e); plateEdges = e;
+    }
+  }
+  chainMesh = new THREE.InstancedMesh(linkGeom, matFor('chain', 'grey'), META.chain.n);
+  chainMesh.castShadow = chainMesh.receiveShadow = true;
+  chainMesh.frustumCulled = false;
+  scene.add(chainMesh);
+}
+
+// ---------- labels ----------
+function label(text, pos, cls = '', parent = scene, face = false) {
+  const d = document.createElement('div');
+  d.className = 'lbl ' + cls; d.textContent = text;
+  const o = new CSS2DObject(d); o.position.set(...pos); parent.add(o);
+  o.userData.face = face;
+  allLabels.push(o);
+  return o;
+}
+const NB = META.named;
+const ctr = (k) => NB[k][0].map((v, i) => (v + NB[k][1][i]) / 2);
+function addLabels() {
+  const m = ctr('motor'); label('11W motor · red 100 rpm', [m[0], m[1], NB.motor[1][2] + 0.35]);
+  const c = ctr('cyl'); label('25 mm cylinder', [c[0] + 0.6, c[1], NB.cyl[1][2] + 0.3]);
+  const s = ctr('slider'); label('Sliding 36T', [s[0], s[1] - 0.95, s[2] - 0.55], '', unit('slider').outer, true);
+  const r = ctr('rodend'); label('Rod end → standoff → fork', [r[0] - 0.2, r[1] - 0.6, r[2] + 0.35], 'small', unit('fork').outer);
+  const w = ctr('w12'); label('12T on winch shaft (cascade)', [w[0], w[1] - 0.6, NB.w12[0][2] - 0.25], '', scene, true);
+  const l = ctr('ls36'); label('36T on intake shaft', [l[0], l[1] - 0.95, NB.ls36[1][2] + 0.1], 'small', scene, true);
+  const i = ctr('idl'); label('Chain to idler 36T', [i[0], i[1] + 0.4, NB.idl[1][2] + 0.25], 'small');
+  const t = ctr('r12'); label('12T on top roller', [t[0] + 0.3, t[1] + 0.45, NB.r12[0][2] - 0.2], 'small');
+  const p = ctr('plate'); label('Polycarbonate plate', [p[0], NB.plate[0][1] - 0.1, NB.plate[0][2] + 0.25], 'small');
+  label('Right tower', [ctr('towerR')[0], 4.25, 13.1], 'small');
+  label('Left tower', [ctr('towerL')[0], 4.25, 13.1], 'small');
+}
+
+// ---------- gear and chain kinematics ----------
+const wrapP = (a, p) => a - p * Math.round(a / p);
+const psi = (a, b) => Math.atan2(AX[b][1] - AX[a][1], AX[b][0] - AX[a][0]);
+// tooth angle that gear B (NB teeth) needs so it meshes with gear A (NA teeth) whose tooth sits at thA
+const meshTooth = (thA, NA, NBt, ps) => ps + PI + PI / NBt - (NA / NBt) * (thA - ps);
+const PSI = { MI: psi('M', 'I'), MW: psi('M', 'W8'), WL: psi('W', 'L'), IR: psi('IDL', 'R'), RR2: psi('R', 'R2') };
+const pitch = (g) => TAU / GE[g].N;
+
+// chain path: two equal 8T sprockets (intake shaft I and idler IDL), pins on the pitch circle
+const CH = META.chain, P6 = CH.pitch, NT = 8;
+const RP = P6 / (2 * Math.sin(PI / NT));        // pitch radius
+const REFF = NT * P6 / TAU;                      // chain travel per radian, one pitch per tooth
+const C13 = AX.I, C14 = AX.IDL;
+const dv = [C14[0] - C13[0], C14[1] - C13[1]], Ld = Math.hypot(...dv), uh = [dv[0] / Ld, dv[1] / Ld];
+const right = [uh[1], -uh[0]], left = [-uh[1], uh[0]];
+const SPAN = (CH.n * P6 - TAU * REFF) / 2;        // straight runs, sized so 33 links close the loop
+const ARC = PI * REFF;
+const aR = Math.atan2(right[1], right[0]), aL = Math.atan2(left[1], left[0]);
+const S_ARC14 = SPAN, S_SPAN2 = SPAN + ARC, S_ARC13 = 2 * SPAN + ARC, S_TOT = CH.n * P6;
+function chainAt(s) {
+  s = ((s % S_TOT) + S_TOT) % S_TOT;
+  if (s < SPAN) { const f = s / SPAN; return [C13[0] + RP * right[0] + f * dv[0], C13[1] + RP * right[1] + f * dv[1]]; }
+  if (s < S_SPAN2) { const a = aR + (s - S_ARC14) / REFF; return [C14[0] + RP * Math.cos(a), C14[1] + RP * Math.sin(a)]; }
+  if (s < S_ARC13) { const f = (s - S_SPAN2) / SPAN; return [C14[0] + RP * left[0] - f * dv[0], C14[1] + RP * left[1] - f * dv[1]]; }
+  const a = aL + (s - S_ARC13) / REFF; return [C13[0] + RP * Math.cos(a), C13[1] + RP * Math.sin(a)];
+}
+
+// ---------- state ----------
+const SHIFT = 0.984;   // 25 mm stroke
+const S = {
+  playing: true, auto: true, f: 0.10, path: false,
+  dM: 0, dI: 0, dW: 0, wI: 0, wW: 0,          // unit rotations from the CAD pose (rad) and free-running speeds (rad/s)
+  lockI: true, lockW: false, cI: 0, cW: 0, corrI: 0, corrW: 0,
+  t: 0, v: 0, target: 'intake', goal: 0,
+  phase: 'run', tPhase: 0, motorFrac: 1, dwell: 0, blocked: false,
+  rpm: { motor: 100, winch: 0, ishaft: 100, roller: 300 },
+};
+const T_EASE = 0.10, T_SETTLE = 0.04, T_RESUME = 0.15, SLOW = 0.15, DWELL = 5.0;
+const VMAX = 7.0, ACC = 150;       // cylinder: in/s, in/s^2
+const W_MOTOR = 100 / 60 * TAU;    // red cartridge, rad/s
+
+// tooth face overlap along the shaft, for travel t (0 = retracted = intake)
+const SX = GE.slider.x, IX = GE.ls36.x, WX = GE.w12.x;
+const ovI = (t) => Math.min(SX[1] + t, IX[1]) - Math.max(SX[0] + t, IX[0]);
+const ovW = (t) => Math.min(SX[1] + t, WX[1]) - Math.max(SX[0] + t, WX[0]);
+const CONTACT_W = WX[1] - SX[0];   // moving toward the winch 12T (t decreasing), teeth touch here
+const CONTACT_I = IX[0] - SX[1];   // moving back toward the intake 36T (t increasing)
+
+const thSlider = () => GE.slider.phase + S.dM;
+const reqI = () => meshTooth(thSlider(), 36, 36, PSI.MI) - GE.ls36.phase;   // dI that meshes
+const reqW = () => meshTooth(thSlider(), 36, 12, PSI.MW) - GE.w12.phase;    // dW that meshes
+const misI = () => wrapP(S.dI - reqI(), pitch('ls36'));
+const misW = () => wrapP(S.dW - reqW(), pitch('w12'));
+const TOL = 0.14;
+
+// permanent meshes, fixed at load from the CAD tooth phases
+let dLa0 = 0, dLb0 = 0, dR0 = 0, dIDL0 = 0, s0 = 0;
+function initPhases() {
+  S.dI = wrapP(-misI(), pitch('ls36'));   // seat the intake 36T on the slider (the CAD pose is intake mode)
+  S.cI = S.dI + S.dM;
+  dLa0 = wrapP(meshTooth(GE.wa12.phase, 12, 36, PSI.WL) - GE.la36.phase, pitch('la36'));
+  dLb0 = wrapP(meshTooth(GE.wb12.phase, 12, 36, PSI.WL) - GE.lb36.phase, pitch('lb36'));
+  // chain: seat the pins in the intake-shaft sprocket gaps, then turn the idler sprocket to match
+  const g13 = GE.sp13.phase + PI / NT;
+  s0 = S_ARC13 + REFF * wrapP(g13 - aL, TAU / NT);
+  s0 = ((s0 % P6) + P6) % P6;
+  // a pin on the idler arc: angle aR + (s - S_ARC14)/REFF, for s = s0 + k*P6 inside the arc
+  const k = Math.ceil((S_ARC14 - s0) / P6), sp = s0 + k * P6;
+  const aPin = aR + (sp - S_ARC14) / REFF;
+  dIDL0 = wrapP(aPin - (GE.sp14.phase + PI / NT), TAU / NT);
+  dR0 = wrapP(meshTooth(GE.idl36.phase + dIDL0, 36, 12, PSI.IR) - GE.r12.phase, pitch('r12'));
+}
+
+function requestMode(m) {
+  if (m === S.target && S.phase === 'run') return;
+  S.target = m; S.goal = m === 'lift' ? -SHIFT : 0;
+  if (S.phase === 'run') { S.phase = 'ease'; S.tPhase = 0; }
+  S.dwell = 0;
+  syncButtons();
+}
+
+function step(dtv) {
+  const dt = dtv * S.f;   // real seconds
+  S.tPhase += dt;
+  if (S.phase === 'ease') {
+    S.motorFrac = Math.max(SLOW, 1 - (1 - SLOW) * S.tPhase / T_EASE);
+    if (S.tPhase >= T_EASE) { S.phase = 'stroke'; S.tPhase = 0; }
+  } else if (S.phase === 'stroke') {
+    S.motorFrac = SLOW;
+    const d = S.goal - S.t;
+    const want = Math.sign(d) * Math.min(VMAX, Math.sqrt(2 * ACC * Math.abs(d)));
+    S.v += Math.max(-ACC * dt, Math.min(ACC * dt, want - S.v));
+    let tn = S.t + S.v * dt;
+    S.blocked = false;
+    // tooth-on-tooth: the gear stops against the other gear's teeth until a gap lines up
+    if (S.v < 0 && S.t >= CONTACT_W && tn < CONTACT_W && !S.lockW && Math.abs(misW()) > TOL * pitch('w12')) { tn = CONTACT_W; S.v = 0; S.blocked = true; }
+    if (S.v > 0 && S.t <= CONTACT_I && tn > CONTACT_I && !S.lockI && Math.abs(misI()) > TOL * pitch('ls36')) { tn = CONTACT_I; S.v = 0; S.blocked = true; }
+    // end of stroke: the piston bottoms out at the goal
+    if (!S.blocked && (Math.sign(S.goal - tn) !== Math.sign(d) || Math.abs(S.goal - tn) < 5e-4)) { tn = S.goal; S.v = 0; S.phase = 'settle'; S.tPhase = 0; }
+    S.t = tn;
+  } else if (S.phase === 'settle') {
+    if (S.tPhase >= T_SETTLE) { S.phase = 'resume'; S.tPhase = 0; }
+  } else if (S.phase === 'resume') {
+    S.motorFrac = SLOW + (1 - SLOW) * Math.min(1, S.tPhase / T_RESUME);
+    if (S.tPhase >= T_RESUME) { S.phase = 'run'; S.motorFrac = 1; }
+  } else if (S.auto) {
+    S.dwell += dtv;
+    if (S.dwell > DWELL) requestMode(S.target === 'lift' ? 'intake' : 'lift');
+  }
+
+  const wM = W_MOTOR * S.motorFrac;
+  const dM0 = S.dM, dI0 = S.dI, dW0 = S.dW;
+  S.dM += wM * dt;
+  // engagement follows the tooth overlap
+  const eI = ovI(S.t) > 0.004, eW = ovW(S.t) > 0.004;
+  if (eI && !S.lockI) { const m = misI(); S.corrI = m; S.cI = S.dI - m + S.dM; S.lockI = true; }
+  if (!eI && S.lockI) { S.lockI = false; S.wI = -wM; }
+  if (eW && !S.lockW) { const m = misW(); S.corrW = m; S.cW = (S.dW - m) + 3 * S.dM; S.lockW = true; }
+  if (!eW && S.lockW) { S.lockW = false; S.wW = -3 * wM; }
+  const k = Math.exp(-dt / 0.03);
+  if (S.lockI) { S.corrI *= k; S.dI = S.cI - S.dM + S.corrI; }
+  else { S.wI *= Math.exp(-dt / 0.25); S.dI += S.wI * dt; }   // intake coasts down
+  if (S.lockW) { S.corrW *= k; S.dW = S.cW - 3 * S.dM + S.corrW; }
+  else { S.wW *= Math.exp(-dt / 0.05); S.dW += S.wW * dt; }   // cascade motors hold the winch
+  if (dt > 0) {
+    const toRpm = (a) => Math.abs(a) / dt / TAU * 60;
+    const sm = (o, n) => o + (n - o) * Math.min(1, dt / 0.04);
+    S.rpm.motor = sm(S.rpm.motor, toRpm(S.dM - dM0));
+    S.rpm.ishaft = sm(S.rpm.ishaft, toRpm(S.dI - dI0));
+    S.rpm.roller = 3 * S.rpm.ishaft;
+    S.rpm.winch = sm(S.rpm.winch, toRpm(S.dW - dW0));
+  }
+}
+
+const tmpM = new THREE.Matrix4();
+function pose() {
+  if (!units.M) return;
+  const rot = (n, a) => { if (units[n]) units[n].pivot.rotation.x = a; };
+  rot('M', S.dM); rot('slider', S.dM);
+  if (units.slider) units.slider.outer.position.x = S.t;
+  if (units.fork) units.fork.outer.position.x = S.t;
+  rot('I', S.dI); rot('W', S.dW); rot('W8', S.dW);
+  rot('La', dLa0 - S.dW / 3); rot('Lb', dLb0 - S.dW / 3);
+  rot('IDL', dIDL0 + S.dI);
+  const dR = dR0 - 3 * S.dI;
+  rot('R', dR);
+  rot('R2', meshTooth(GE.rl36.phase + dR, 36, 12, PSI.RR2) - GE.r2_12.phase);   // idler 12T beside the roller's 36T
+  // chain: pins advance one pitch per sprocket tooth
+  const s = s0 + REFF * S.dI;
+  for (let k = 0; k < CH.n; k++) {
+    const a = chainAt(s + k * P6), b = chainAt(s + (k + 1) * P6);
+    const A = CH.ccw ? a : b, B = CH.ccw ? b : a;
+    let uy = B[0] - A[0], uz = B[1] - A[1]; const L = Math.hypot(uy, uz); uy /= L; uz /= L;
+    tmpM.set(1, 0, 0, 0,
+             0, uy, -uz, A[0],
+             0, uz, uy, A[1],
+             0, 0, 0, 1);
+    chainMesh.setMatrixAt(k, tmpM);
+  }
+  chainMesh.instanceMatrix.needsUpdate = true;
+}
+
+// ---------- power-path tint ----------
+const LIFT_U = ['M', 'slider', 'W', 'W8', 'La', 'Lb'], INTAKE_U = ['M', 'slider', 'I', 'IDL', 'R', 'chain'];
+let COL = {}, lastKey = '';
+function readColors() {
+  COL = { lift: new THREE.Color(cssv('--cascade')), intake: new THREE.Color(cssv('--intake')) };
+  scene.background = new THREE.Color(cssv('--stage'));
+}
+function modeKey() { return S.lockW ? 'lift' : S.lockI ? 'intake' : 'neutral'; }
+function highlight() {
+  const key = modeKey() + (S.path ? '+' : '');
+  if (key === lastKey) return;
+  lastKey = key;
+  const mk = modeKey(), on = S.path && mk !== 'neutral' ? (mk === 'lift' ? LIFT_U : INTAKE_U) : [];
+  for (const m of Object.values(unitMats)) {
+    const lit = on.includes(m.userData.unit);
+    m.emissive.copy(lit ? COL[mk] : new THREE.Color(0));
+    m.emissiveIntensity = lit ? 0.32 : 0;
+  }
+  const chip = $('chip');
+  chip.dataset.mode = mk;
+  chip.textContent = mk === 'lift' ? 'Cascade' : mk === 'intake' ? 'Intake' : 'Neutral';
+}
+
+// ---------- UI ----------
+function syncButtons() {
+  $('m-lift').setAttribute('aria-pressed', String(S.target === 'lift'));
+  $('m-intake').setAttribute('aria-pressed', String(S.target === 'intake'));
+}
+$('m-lift').addEventListener('click', () => { S.auto = false; $('auto').checked = false; requestMode('lift'); if (!S.playing) togglePlay(); });
+$('m-intake').addEventListener('click', () => { S.auto = false; $('auto').checked = false; requestMode('intake'); if (!S.playing) togglePlay(); });
+$('auto').addEventListener('change', (e) => { S.auto = e.target.checked; S.dwell = 0; });
+$('lbls').addEventListener('change', (e) => stage.classList.toggle('hide-labels', !e.target.checked));
+$('path').addEventListener('change', (e) => { S.path = e.target.checked; highlight(); });
+$('ctx').addEventListener('change', (e) => { for (const m of ctxMeshes) m.visible = e.target.checked; });
+$('speed').addEventListener('input', (e) => { S.f = parseFloat(e.target.value); $('speedv').textContent = S.f.toFixed(2) + '× real'; });
+function togglePlay() { S.playing = !S.playing; $('play').textContent = S.playing ? 'Pause' : 'Play'; $('play').setAttribute('aria-pressed', String(S.playing)); }
+$('play').addEventListener('click', togglePlay);
+
+// camera offsets from each view's target (inches); scaled up on narrow screens so the whole PTO stays in frame
+const VIEWS = {
+  iso: { off: new THREE.Vector3(9.0, -12.3, 7.0), tgt: new THREE.Vector3(-0.8, 5.0, 9.85) },
+  side: { off: new THREE.Vector3(1.6, -15.5, 2.2), tgt: new THREE.Vector3(-0.8, 5.0, 10.2) },
+  face: { off: new THREE.Vector3(11.5, 0.01, 0.3), tgt: new THREE.Vector3(-0.5, 4.75, 10.15) },
+};
+let camTween = null, view = 'iso';
+const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const fitK = () => Math.pow(Math.max(1, 1.55 / camera.aspect), 0.85);
+function setView(name, instant = false) {
+  view = name;
+  document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
+  const V = VIEWS[name], to = V.tgt.clone().add(V.off.clone().multiplyScalar(fitK()));
+  if (instant) { camera.position.copy(to); controls.target.copy(V.tgt); return; }
+  camTween = { from: camera.position.clone(), fromT: controls.target.clone(), to, toT: V.tgt.clone(), t: 0 };
+}
+// in the gear-plane view, cut away everything in front of the sliding gear so its mesh is visible
+const XPLANE = renderer.clippingPlanes[1];
+const allLabels = [];
+function applyCut() {
+  const cut = view === 'face' ? GE.slider.x[1] + S.t + 0.06 : BOX1[0];
+  XPLANE.constant = cut;
+  for (const o of allLabels) { o.getWorldPosition(_lp); o.visible = view !== 'face' || (o.userData.face && _lp.x <= cut + 0.3); }
+}
+const _lp = new THREE.Vector3();
+document.querySelectorAll('.views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+
+const fmt = (n) => Math.round(n).toString();
+function updateReadout() {
+  highlight();
+  $('r-motor').textContent = fmt(S.rpm.motor);
+  $('r-winch').textContent = fmt(S.rpm.winch);
+  $('r-ishaft').textContent = fmt(S.rpm.ishaft);
+  $('r-roller').textContent = fmt(S.rpm.roller);
+  const tw = $('t-winch'), tr = $('t-roller');
+  tw.textContent = S.lockW ? 'driven' : 'held'; tw.className = 'tag' + (S.lockW ? ' on-lift' : '');
+  tr.textContent = S.lockI ? 'driven' : S.rpm.roller > 3 ? 'coasting' : 'off'; tr.className = 'tag' + (S.lockI ? ' on-intake' : '');
+  $('r-travel').textContent = Math.abs(S.t).toFixed(3);
+  let cyl = S.t < -SHIFT / 2 ? 'extended' : 'retracted';
+  if (S.phase === 'stroke') cyl = S.blocked ? 'stopped on a tooth' : S.v < 0 ? 'extending' : 'retracting';
+  $('r-cyl').textContent = cyl;
+  const mk = modeKey();
+  $('hudsub').textContent = mk === 'lift' ? `winch ${fmt(S.rpm.winch)} rpm` : mk === 'intake' ? `top roller ${fmt(S.rpm.roller)} rpm` : S.blocked ? 'tooth on tooth, waiting for a gap' : 'neither output connected';
+  let st = 0;
+  if (S.phase === 'ease') st = 1;
+  else if (S.phase === 'stroke') st = (S.blocked || (S.target === 'lift' ? S.t < CONTACT_W + 0.02 : S.t > CONTACT_I - 0.02)) ? 3 : 2;
+  else if (S.phase === 'settle') st = 3;
+  else if (S.phase === 'resume') st = 4;
+  document.querySelectorAll('#steps li').forEach((li) => li.classList.toggle('now', Number(li.dataset.step) === st));
+}
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  labelR.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  if (!camTween && units.M === undefined) setView(view, true);
+}
+new ResizeObserver(resize).observe(stage);
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+const reTheme = () => { readColors(); lastKey = ''; highlight(); };
+mq.addEventListener?.('change', reTheme);
+new MutationObserver(reTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  S.auto = false; $('auto').checked = false; S.playing = false; $('play').textContent = 'Play'; $('play').setAttribute('aria-pressed', 'false');
+}
+
+readColors();
+setView('iso', true);
+resize();
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S.playing && units.M) { step(dt); pose(); }
+  if (camTween) {
+    camTween.t = Math.min(1, camTween.t + dt / 0.7);
+    const e = ease(camTween.t);
+    camera.position.lerpVectors(camTween.from, camTween.to, e);
+    controls.target.lerpVectors(camTween.fromT, camTween.toT, e);
+    if (camTween.t >= 1) camTween = null;
+  }
+  controls.update();
+  applyCut();
+  renderer.render(scene, camera);
+  labelR.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+const STILL = /[?&]still/.test(location.search);   // test hook: render only on request
+if (!STILL) requestAnimationFrame(frame);
+setInterval(() => { if (units.M) updateReadout(); }, 100);
+function renderOnce() { controls.update(); applyCut(); renderer.render(scene, camera); labelR.render(scene, camera); }
+
+loadMesh().then((buf) => {
+  build(buf);
+  addLabels();
+  initPhases();
+  pose();
+  updateReadout();
+  msg.hidden = true;
+}).catch((e) => { msg.textContent = 'The CAD parts could not load: ' + e.message; console.error(e); });
+window.__pto = { S, requestMode, setView, step, pose, units, META, misI, misW, ovI, ovW, renderOnce, camera, controls, updateReadout, CENTER, THREE };
+</script>
+
+</body>
+</html>
